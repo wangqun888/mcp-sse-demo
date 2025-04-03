@@ -635,6 +635,21 @@ apiRouter.post("/chat", async (req, res) => {
 
 ![](https://picdn.youdianzhishi.com/images/1743581042949.png)
 
+## 调试
+
+同样我们可以使用 `npx @modelcontextprotocol/inspector` 命令来调试我们的 SSE 服务：
+
+```bash
+$ npx @modelcontextprotocol/inspector   
+Starting MCP inspector...
+⚙️ Proxy server listening on port 6277
+🔍 MCP Inspector is up and running at http://127.0.0.1:6274 🚀
+```
+
+然后在浏览器中打开上面地址即可，选择 SSE，配置上我们的 SSE 地址即可测试：
+
+![](https://picdn.youdianzhishi.com/images/1743675135602.png)
+
 ## 总结
 
 当 LLM 决定触发对用户工具的调用时，工具描述的质量至关重要：
