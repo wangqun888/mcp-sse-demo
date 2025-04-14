@@ -12,6 +12,8 @@ export interface Config {
     groqApiUrl: string;
     anthropicApiKey: string;
     anthropicApiUrl: string;
+    ollamaApiUrl: string;
+    ollamaApiKey: string;
     defaultModel: string;
   };
 }
@@ -28,6 +30,8 @@ export const config: Config = {
     groqApiUrl: process.env.GROQ_API_URL || 'https://api.groq.com/openai/v1',
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
     anthropicApiUrl: process.env.ANTHROPIC_API_URL || 'https://api.anthropic.com/v1',
-    defaultModel: process.env.DEFAULT_MODEL || 'claude-3-5-sonnet-20240620',
+    ollamaApiUrl: process.env.OLLAMA_API_URL || 'http://localhost:11434',
+    ollamaApiKey: process.env.OLLAMA_API_KEY || 'fs',
+    defaultModel: process.env.DEFAULT_MODEL || 'qwen2.5:14b',
   },
 }; 

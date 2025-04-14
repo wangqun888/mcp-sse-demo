@@ -7,7 +7,7 @@ const app = express();
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // 存储活跃连接
@@ -45,14 +45,14 @@ app.get("/sse", async (req, res) => {
   await mcpServer.connect(transport);
   console.log(`[${new Date().toISOString()}] MCP服务器连接成功: ${sessionId}`);
 
-//   // 发送心跳包以保持连接
-//   const heartbeatInterval = setInterval(() => {
-//     res.write('event: heartbeat\ndata: ' + Date.now() + '\n\n');
-//   }, 30000);
+  // 发送心跳包以保持连接
+  const heartbeatInterval = setInterval(() => {
+    res.write('event: heartbeat\ndata: ' + Date.now() + '\n\n');
+  }, 30000);
   
-//   req.on('close', () => {
-//     clearInterval(heartbeatInterval);
-//   });
+  req.on('close', () => {
+    clearInterval(heartbeatInterval);
+  });
 });
 
 // 接收客户端消息的端点
@@ -121,7 +121,7 @@ process.on('SIGINT', async () => {
 // 启动服务器
 const port = process.env.PORT || 8083;
 const server = app.listen(port, () => {
-  console.log(`[${new Date().toISOString()}] 智能商城 MCP SSE 服务器已启动，地址: http://localhost:${port}`);
+  console.log(`[${new Date().toISOString()}] QE MCP SSE 服务器已启动，地址: http://localhost:${port}`);
   console.log(`- SSE 连接端点: http://localhost:${port}/sse`);
   console.log(`- 消息处理端点: http://localhost:${port}/messages`);
   console.log(`- 健康检查端点: http://localhost:${port}/health`);

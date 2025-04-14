@@ -9,8 +9,8 @@ import { fileURLToPath } from "url";
 import { Client as McpClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { config } from "./config.js";
-import { createAnthropicClient } from "./utils.js";
-import { Anthropic } from "@anthropic-ai/sdk";
+import { createOllamaClient, withRetry } from "./utils.js";
+import { Ollama } from "ollama";
 
 // 获取当前文件的目录路径
 const __filename = fileURLToPath(import.meta.url);
@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 
 let mcpClient: McpClient | null = null;
 let anthropicTools: any[] = [];
-let aiClient: Anthropic;
+let ollamaClient: Ollama;
 
 const app = express();
 
@@ -41,6 +41,7 @@ async function initMcpClient() {
 
     await mcpClient.connect(transport);
     const { tools } = await mcpClient.listTools();
+    console.log(`获取到的工具: ${tools.map(t => t.name).join(', ')}`);
     // 转换工具格式为Anthropic所需的数组形式
     anthropicTools = tools.map((tool: any) => {
       return {
@@ -50,7 +51,9 @@ async function initMcpClient() {
       };
     });
     // 创建Anthropic客户端
-    aiClient = createAnthropicClient(config);
+    // aiClient = createAnthropicClient(config);
+    // 创建Ollama客户端
+    ollamaClient = createOllamaClient(config);
 
     console.log("MCP客户端和工具已初始化完成");
   } catch (error) {
@@ -106,90 +109,110 @@ apiRouter.post("/chat", async (req, res) => {
 
     // 调用AI
     console.log(`开始调用AI模型: ${config.ai.defaultModel}`);
-    const response = await aiClient.messages.create({
+    const response = await ollamaClient.chat({
       model: config.ai.defaultModel,
       messages,
-      tools: anthropicTools,
-      max_tokens: 1000,
+      tools: anthropicTools.map(tool => ({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.input_schema
+        }
+      })),
     });
     console.log("AI响应成功");
 
     // 处理工具调用
-    const hasToolUse = response.content.some(
-      (item) => item.type === "tool_use"
-    );
-
-    if (hasToolUse) {
+    if (response.message.tool_calls && response.message.tool_calls.length > 0) {
       // 处理所有工具调用
       const toolResults = [];
 
-      for (const content of response.content) {
-        if (content.type === "tool_use") {
-          const name = content.name;
-          const toolInput = content.input as
-            | { [x: string]: unknown }
-            | undefined;
-
-          try {
-            // 调用MCP工具
-            if (!mcpClient) {
-              console.error("MCP客户端未初始化");
-              throw new Error("MCP客户端未初始化");
-            }
-            console.log(`开始调用MCP工具: ${name}`);
-            const toolResult = await mcpClient.callTool({
-              name,
-              arguments: toolInput,
-            });
-            console.log(`工具返回结果: ${JSON.stringify(toolResult)}`);
-
-            toolResults.push({
-              name,
-              result: toolResult,
-            });
-          } catch (error: any) {
-            console.error(`工具调用失败: ${name}`, error);
-            toolResults.push({
-              name,
-              error: error.message,
-            });
+      for (const toolCall of response.message.tool_calls) {
+        const name = toolCall.function.name;
+        const toolInput = toolCall.function.arguments;
+        console.log(`工具调用: ${name}, 参数: ${toolInput}`);
+        // 处理工具调用并获取结果
+        // 这里需要根据实际情况调用相应的工具，并获取结果
+        // 这里只是一个示例，实际项目中需要根据具体情况实现
+        // 假设工具调用成功，返回结果为toolResult
+        try {
+          // 调用MCP工具
+          if (!mcpClient) {
+            console.error("MCP客户端未初始化");
+            throw new Error("MCP客户端未初始化");
           }
+          console.log(`开始调用MCP工具: ${name}`);
+          
+          // 解析工具参数
+          let parsedInput = toolInput;
+          if (typeof toolInput === 'string') {
+            try {
+              parsedInput = JSON.parse(toolInput);
+            } catch (e) {
+              console.warn(`工具参数解析失败，使用原始参数: ${toolInput}`);
+            }
+          }
+          
+          // 确保参数是对象类型并且包含必要的字段
+          let finalInput: any = {};
+          if (name === 'purchase') {
+            // 规范化 purchase 工具的参数
+            const items = Array.isArray(parsedInput?.items) ? parsedInput.items : [];
+            finalInput = {
+              customerName: parsedInput?.customerName || '匿名用户',
+              items: items.map((item: any) => ({
+                productId: Number(item.productID || item.productId) || 0, // 确保转换为数字类型
+                quantity: Number(item.quantity) || 1 // 确保转换为数字类型
+              }))
+            };
+          } else {
+            finalInput = typeof parsedInput === 'object' ? parsedInput : {};
+          }
+          
+          console.log(`最终工具参数: ${JSON.stringify(finalInput)}`);
+          
+          const toolResult = await withRetry(async () => {
+            return await mcpClient!.callTool({
+              name,
+              arguments: finalInput,
+            });
+          });
+          console.log(`工具返回结果: ${JSON.stringify(toolResult)}`);
+
+          toolResults.push({
+            name,
+            result: toolResult,
+          });
+        } catch (error: any) {
+          console.error(`工具调用失败: ${name}`, error);
+          toolResults.push({
+            name,
+            error: error.message,
+          });
         }
       }
 
       // 将工具结果发送回AI获取最终回复
       console.log("开始获取AI最终回复");
-      const finalResponse = await aiClient.messages.create({
+      const finalResponse = await ollamaClient.chat({
         model: config.ai.defaultModel,
         messages: [
           ...messages,
-          {
-            role: "user",
-            content: JSON.stringify(toolResults),
-          },
+          { role: 'assistant', content: response.message.content },
+          { role: 'user', content: JSON.stringify(toolResults) }
         ],
-        max_tokens: 1000,
       });
       console.log("获取AI最终回复成功");
 
-      const textResponse = finalResponse.content
-        .filter((c) => c.type === "text")
-        .map((c) => c.text)
-        .join("\n");
-
       res.json({
-        response: textResponse,
+        response: finalResponse.message.content,
         toolCalls: toolResults,
       });
     } else {
       // 直接返回AI回复
-      const textResponse = response.content
-        .filter((c) => c.type === "text")
-        .map((c) => c.text)
-        .join("\n");
-
       res.json({
-        response: textResponse,
+        response: response.message.content,
         toolCalls: [],
       });
     }
