@@ -1,5 +1,9 @@
-import { Product, Inventory, Order, WeatherResponse, WeatherData, WebFetchResponse, BingSearchResponse } from '../types/index.js';
-import axios from 'axios';
+// 修改导入语句，添加 WeatherDay
+import { 
+  Product, 
+  Inventory, 
+  Order, 
+} from '../types/index.js';
 
 // 模拟数据存储
 let products: Product[] = [
@@ -81,102 +85,45 @@ export async function createPurchase(customerName: string, items: {productId: nu
   return order;
 }
 
-export async function fetchWeather(city: string): Promise<WeatherResponse> {
-  try {
-    const encodedCity = encodeURIComponent(city);
-    const response = await axios.get(
-      `https://wttr.in/${encodedCity}?format=j1&lang=zh`,
-      { timeout: 10000 }
-    );
+// export async function searchBing(query: string, pageNum: number = 2): Promise<BingSearchResponse> {
+//   try {
+//     const subscriptionKey = process.env.BING_API_KEY || '';
+//     if (!subscriptionKey) {
+//       throw new Error('未配置必应API密钥');
+//     }
 
-    if (!response.data) {
-      return {
-        success: false,
-        error: `获取 ${city} 的天气信息失败: 服务器返回空数据`
-      };
-    }
+//     const endpoint = 'https://api.bing.microsoft.com/v7.0/search';
+//     const response = await axios.get(endpoint, {
+//       headers: {
+//         'Ocp-Apim-Subscription-Key': subscriptionKey
+//       },
+//       params: {
+//         q: query,
+//         mkt: 'zh-CN',
+//         count: pageNum * 10
+//       }
+//     });
 
-    const current = response.data.current_condition[0];
-    const weatherData: WeatherData = {
-      city,
-      date: current.localObsDateTime,
-      temperature: `${current.temp_C}°C`,
-      description: current.lang_zh[0].value,
-      humidity: `${current.humidity}%`,
-      windSpeed: `${current.windspeedKmph}km/h`
-    };
+//     const results = response.data.webPages.value.map((page: any) => ({
+//       title: page.name,
+//       url: page.url,
+//       content: page.snippet
+//     }));
 
-    return {
-      success: true,
-      data: weatherData
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.code === 'ECONNABORTED'
-        ? `获取 ${city} 的天气信息超时，请稍后重试`
-        : `获取 ${city} 的天气信息失败: ${error.message}`
-    };
-  }
-}
+//     return {
+//       success: true,
+//       results
+//     };
+//   } catch (error: any) {
+//     return {
+//       success: false,
+//       error: `搜索失败: ${error.message}`
+//     };
+//   }
+// }
 
-export async function fetchWebsite(url: string): Promise<WebFetchResponse> {
-  try {
-    const headers = {
-      "User-Agent": "MCP Test Server (github.com/modelcontextprotocol/python-sdk)"
-    };
+// 删除 fetchWebsite 函数
+// 删除 getWeatherDetail 函数
+// 删除 fetchWeather 函数
 
-    const response = await axios.get(url, { 
-      headers,
-      timeout: 10000,
-      maxRedirects: 5
-    });
-
-    return {
-      success: true,
-      content: response.data
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: `获取网页内容失败: ${error.message}`
-    };
-  }
-}
-
-export async function searchBing(query: string, pageNum: number = 2): Promise<BingSearchResponse> {
-  try {
-    const subscriptionKey = process.env.BING_API_KEY || '';
-    if (!subscriptionKey) {
-      throw new Error('未配置必应API密钥');
-    }
-
-    const endpoint = 'https://api.bing.microsoft.com/v7.0/search';
-    const response = await axios.get(endpoint, {
-      headers: {
-        'Ocp-Apim-Subscription-Key': subscriptionKey
-      },
-      params: {
-        q: query,
-        mkt: 'zh-CN',
-        count: pageNum * 10
-      }
-    });
-
-    const results = response.data.webPages.value.map((page: any) => ({
-      title: page.name,
-      url: page.url,
-      content: page.snippet
-    }));
-
-    return {
-      success: true,
-      results
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: `搜索失败: ${error.message}`
-    };
-  }
-}
+// 删除 searchLang 函数的实现

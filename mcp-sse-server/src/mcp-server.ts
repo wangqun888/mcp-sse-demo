@@ -1,6 +1,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getProducts, getInventory, getOrders, createPurchase, fetchWeather, fetchWebsite, searchBing } from "./services/inventory-service.js";
+import { 
+  getProducts, 
+  getInventory, 
+  getOrders, 
+  createPurchase
+} from "./services/inventory-service.js";
+import { getFlightTimes } from "./services/flight-service.js";
+import { automateWebPage } from "./services/automate-webpage-service.js";
+import { searchLangWithFormat } from "./services/langsearch-service.js";
+import { getWeatherWithFormat } from "./services/weather-service.js";
+import { fetchWebsiteWithFormat } from "./services/website-service.js";
 
 export const server = new McpServer({
   name: "mcp-sse-demo",
@@ -105,43 +115,16 @@ server.tool(
   }
 );
 
-// 添加天气查询工具
+// 修改天气查询工具
 server.tool(
   "getWeather",
   "获取指定城市的天气信息",
   {
     city: z.string().describe("城市名称")
   },
-  async ({ city }, extra) => {  // 添加 extra 参数
+  async ({ city }) => {
     console.log("查询天气", { city });
-    const response = await fetchWeather(city);
-    
-    if (!response.success) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: response.error || "获取天气信息失败"  // 确保 text 不为 undefined
-          }
-        ]
-      };
-    }
-
-    const weather = response.data!;
-    const weatherText = `${weather.date} 城市 ${weather.city} 的天气情况：
-温度：${weather.temperature}
-天气：${weather.description}
-湿度：${weather.humidity}
-风速：${weather.windSpeed}`;
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: weatherText  // weatherText 一定是 string 类型
-        }
-      ]
-    };
+    return await getWeatherWithFormat(city);
   }
 );
 
@@ -152,66 +135,129 @@ server.tool(
   {
     url: z.string().url().describe("网页URL")
   },
-  async ({ url }, extra) => {  // 添加 extra 参数
+  async ({ url }) => {
     console.log("抓取网页", { url });
-    const response = await fetchWebsite(url);
-    
-    if (!response.success) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: response.error || "获取网页内容失败"  // 确保 text 不为 undefined
-          }
-        ]
-      };
-    }
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: response.content || "网页内容为空"  // 确保 text 不为 undefined
-        }
-      ]
-    };
+    return await fetchWebsiteWithFormat(url);
   }
 );
 
-// 添加必应搜索工具
+// // 添加必应搜索工具
+// server.tool(
+//   "searchBing",
+//   "使用必应搜索引擎进行搜索",
+//   {
+//     query: z.string().describe("搜索关键词"),
+//     pageNum: z.number().optional().describe("搜索结果页数，默认2页")
+//   },
+//   async ({ query, pageNum }) => {
+//     console.log("必应搜索", { query, pageNum });
+//     const response = await searchBing(query, pageNum);
+    
+//     if (!response.success) {
+//       return {
+//         content: [
+//           {
+//             type: "text",
+//             text: response.error || "搜索失败"
+//           }
+//         ]
+//       };
+//     }
+
+//     const searchResults = response.results!.map((result, index) => 
+//       `引用 ${index + 1}:\n标题: ${result.title}\nURL: ${result.url}\n内容: ${result.content}\n`
+//     ).join('\n');
+
+//     return {
+//       content: [
+//         {
+//           type: "text",
+//           text: searchResults
+//         }
+//       ]
+//     };
+//   }
+// );
+
+// 添加 LangSearch 查询工具
 server.tool(
-  "searchBing",
-  "使用必应搜索引擎进行搜索",
+  "searchLang",
+  "使用LangSearch进行网络搜索",
   {
     query: z.string().describe("搜索关键词"),
-    pageNum: z.number().optional().describe("搜索结果页数，默认2页")
+    freshness: z.enum(['oneDay', 'oneWeek', 'oneMonth', 'oneYear', 'noLimit'])
+      .optional()
+      .default('noLimit')
+      .describe("搜索结果时间范围（可选，默认：noLimit）"),
+    summary: z.boolean()
+      .optional()
+      .default(false)
+      .describe("是否显示长文本摘要（可选，默认：false）"),
+    count: z.number()
+      .int()
+      .min(1)
+      .max(10)
+      .optional()
+      .default(5)
+      .describe("返回结果数量，范围1-10（可选，默认：5）")
   },
-  async ({ query, pageNum }) => {
-    console.log("必应搜索", { query, pageNum });
-    const response = await searchBing(query, pageNum);
+  async ({ query, freshness, summary, count }) => {
+    console.log("LangSearch搜索", { query, freshness, summary, count });
+    return await searchLangWithFormat({ query, freshness, summary, count });
+  }
+);
+
+// 添加航班查询工具
+server.tool(
+  "getFlightTimes",
+  "查询航班起降时间信息",
+  {
+    departure: z.string().describe("出发机场代码 (如: LGA, LAX)"),
+    arrival: z.string().describe("到达机场代码 (如: LAX, LGA)")
+  },
+  async ({ departure, arrival }) => {
+    console.log("查询航班", { departure, arrival });
+    const response = await getFlightTimes(departure, arrival);
     
     if (!response.success) {
       return {
         content: [
           {
             type: "text",
-            text: response.error || "搜索失败"
+            text: response.error || "查询失败"
           }
         ]
       };
     }
 
-    const searchResults = response.results!.map((result, index) => 
-      `引用 ${index + 1}:\n标题: ${result.title}\nURL: ${result.url}\n内容: ${result.content}\n`
-    ).join('\n');
+    const flightInfo = response.data!;
+    const text = `航班信息：
+      出发时间：${flightInfo.departure}
+      到达时间：${flightInfo.arrival}
+      飞行时长：${flightInfo.duration}`;
 
     return {
       content: [
         {
           type: "text",
-          text: searchResults
+          text: text
         }
       ]
     };
   }
 );
+
+// 添加 Playwright 网页自动化工具
+server.tool(
+  "automateWebPage",
+  "使用 Playwright 进行网页自动化操作",
+  {
+    url: z.string().url().describe("目标网页URL"),
+    actions: z.string().describe("自动化操作指令，格式为JSON字符串或自然语言描述")
+  },
+  async ({ url, actions }) => {
+    return await automateWebPage(url, actions);
+  }
+);
+
+

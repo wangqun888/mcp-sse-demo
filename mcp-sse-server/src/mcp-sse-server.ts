@@ -120,9 +120,9 @@ process.on('SIGINT', async () => {
 
 // 启动服务器
 const port = process.env.PORT || 8083;
-const server = app.listen(port, () => {
-  console.log(`[${new Date().toISOString()}] QE MCP SSE 服务器已启动，地址: http://localhost:${port}`);
-  console.log(`- SSE 连接端点: http://localhost:${port}/sse`);
-  console.log(`- 消息处理端点: http://localhost:${port}/messages`);
-  console.log(`- 健康检查端点: http://localhost:${port}/health`);
+const server = app.listen(Number(port), '0.0.0.0', () => {
+  console.log(`[${new Date().toISOString()}] QE MCP SSE 服务器已启动，地址: http://0.0.0.0:${port}`);
+  console.log(`- SSE 连接端点: http://0.0.0.0:${port}/sse`);
+  console.log(`- 消息处理端点: http://0.0.0.0:${port}/messages`);
+  console.log(`- 健康检查端点: http://0.0.0.0:${port}/health`);
 }); 
