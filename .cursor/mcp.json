@@ -3,6 +3,9 @@
     "products-sse": {
     "url": "http://localhost:8083/sse"
     },
+    "amap-amap-sse": {
+      "url": "https://mcp.amap.com/sse?key=e3d3a6a08f55c61a79d24f01aceba6ae"
+    },
     "playwright": {
       "command": "npx",
       "args": [

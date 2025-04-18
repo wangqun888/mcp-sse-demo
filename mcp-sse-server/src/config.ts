@@ -12,5 +12,10 @@ export const config = {
   },
   heartbeat: {
     interval: parseInt(process.env.HEARTBEAT_INTERVAL || '30000')
+  },
+  // 添加高德配置
+  amap: {
+    key: process.env.AMAP_KEY || '您的高德Key',
+    mcpUrl: 'https://mcp.amap.com/sse'
   }
-}; 
+};

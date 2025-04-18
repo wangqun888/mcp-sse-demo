@@ -13,7 +13,7 @@ import {
  */
 export async function searchLang(options: LangSearchOptions): Promise<LangSearchResponse> {
   try {
-    const apiKey = process.env.LANGSEARCH_API_KEY || 'sk-0b8eea6f35204b15a46830acec0a47b5';
+    const apiKey = process.env.LANGSEARCH_API_KEY || 'LangSearch API密钥未配置';
     if (!apiKey) {
       throw new Error('未配置LangSearch API密钥');
     }

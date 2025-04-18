@@ -2,9 +2,6 @@ import { FlightTime, FlightTimeResponse } from '../types/index.js';
 
 /**
  * 获取航班起降时间信息
- * @param departure 出发机场代码
- * @param arrival 到达机场代码
- * @returns 航班时间信息
  */
 export async function getFlightTimes(departure: string, arrival: string): Promise<FlightTimeResponse> {
   try {
@@ -37,4 +34,39 @@ export async function getFlightTimes(departure: string, arrival: string): Promis
       error: `获取航班信息失败: ${error.message}`
     };
   }
+}
+
+/**
+ * 获取并格式化航班信息
+ */
+export async function getFlightTimesWithFormat(departure: string, arrival: string): Promise<{
+  content: Array<{ type: "text"; text: string; }>
+}> {
+  const response = await getFlightTimes(departure, arrival);
+  
+  if (!response.success) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: response.error || "查询失败"
+        }
+      ]
+    };
+  }
+
+  const flightInfo = response.data!;
+  const text = `航班信息：
+    出发时间：${flightInfo.departure}
+    到达时间：${flightInfo.arrival}
+    飞行时长：${flightInfo.duration}`;
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: text
+      }
+    ]
+  };
 }

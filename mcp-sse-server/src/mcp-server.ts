@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { config } from "./config.js";
 import { z } from "zod";
 import { 
   getProducts, 
@@ -6,7 +7,7 @@ import {
   getOrders, 
   createPurchase
 } from "./services/inventory-service.js";
-import { getFlightTimes } from "./services/flight-service.js";
+import { getFlightTimesWithFormat } from "./services/flight-service.js";
 import { automateWebPage } from "./services/automate-webpage-service.js";
 import { searchLangWithFormat } from "./services/langsearch-service.js";
 import { getWeatherWithFormat } from "./services/weather-service.js";
@@ -15,7 +16,13 @@ import { fetchWebsiteWithFormat } from "./services/website-service.js";
 export const server = new McpServer({
   name: "mcp-sse-demo",
   version: "1.0.0",
-  description: "提供商品查询、库存管理和订单处理的MCP工具"
+  description: "提供商品查询、库存管理和订单处理、天气查询、网页搜索、抓取页面代码、航班查询、网页自动化操作等MCP工具",
+  // 添加外部服务配置
+  services: {
+    "amap-sse": {
+      url: `${config.amap.mcpUrl}?key=${config.amap.key}`
+    }
+  }
 });
 
 // 获取产品列表工具
@@ -217,33 +224,7 @@ server.tool(
   },
   async ({ departure, arrival }) => {
     console.log("查询航班", { departure, arrival });
-    const response = await getFlightTimes(departure, arrival);
-    
-    if (!response.success) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: response.error || "查询失败"
-          }
-        ]
-      };
-    }
-
-    const flightInfo = response.data!;
-    const text = `航班信息：
-      出发时间：${flightInfo.departure}
-      到达时间：${flightInfo.arrival}
-      飞行时长：${flightInfo.duration}`;
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: text
-        }
-      ]
-    };
+    return await getFlightTimesWithFormat(departure, arrival);
   }
 );
 
